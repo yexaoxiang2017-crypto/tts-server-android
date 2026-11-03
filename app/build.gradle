@@ -89,7 +89,7 @@ android {
         debug {
             signingConfig signingConfigs.release
             applicationIdSuffix ".debug"
-            versionNameSuffix "_debug"
+            versionNameSuffix "_debug_test"
         }
     }
     packagingOptions {
