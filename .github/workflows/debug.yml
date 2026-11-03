@@ -24,10 +24,15 @@ jobs:
       - name: Build with Gradle
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --build-cache --parallel --daemon --warning-mode all
+          ./gradlew assembleDebug --stacktrace --warning-mode all
+      - name: Collect APKs
+        run: |
+          mkdir -p out
+          find . -name '*.apk' -not -path './.git/*' -exec cp -v {} out/ \;
+          ls -l out
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: TTS_Server_debug
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 7
+          name: apk-debug
+          path: out/*.apk
+          if-no-files-found: error
