@@ -2,6 +2,9 @@ name: Build Debug
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - openclaw-build
 
 jobs:
   build:
