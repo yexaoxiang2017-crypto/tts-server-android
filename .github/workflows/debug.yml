@@ -6,6 +6,9 @@ on:
     branches:
       - openclaw-build
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,3 +39,18 @@ jobs:
           name: apk-debug
           path: out/*.apk
           if-no-files-found: error
+
+      # 直链下载：固定 tag ci-latest，资源每次覆盖，手机上点链接直接下 .apk
+      - name: Publish to Release (ci-latest)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          ASSET="tts-debug.apk"
+          APK=$(ls out/*.apk | head -1)
+          cp "$APK" "$ASSET"
+          gh release view ci-latest >/dev/null 2>&1 || \
+            gh release create ci-latest --prerelease --title "CI 最新构建" \
+              --notes "由 OpenClaw 流水线自动生成。标签固定为 ci-latest，资源每次覆盖。"
+          gh release upload ci-latest "$ASSET" --clobber
+          echo "APK_URL=https://github.com/${{ github.repository }}/releases/download/ci-latest/$ASSET"
