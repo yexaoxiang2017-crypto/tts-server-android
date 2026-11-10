@@ -184,8 +184,36 @@ class NativeWebSocket constructor(
         scope: Scriptable,
         args: Array<out Any>?,
     ): Any {
-        val url = args!![0].toString()
-        val headers = args[1] as? Map<CharSequence, CharSequence> ?: emptyMap()
+        val argv = args!!
+        val url = argv[0].toString()
+        val rawHeaders: Any? = if (argv.size > 1) argv[1] else null
+        // 插件传进来的是 JS 对象字面量（Rhino Scriptable），并不是 java.util.Map，
+        // 原来直接 `as? Map` 恒为 null，导致自定义请求头（如 User-Agent）被静默丢弃。
+        val headers: Map<CharSequence, CharSequence> = when {
+            rawHeaders == null || rawHeaders === Undefined.instance -> emptyMap()
+            rawHeaders is Map<*, *> -> rawHeaders.entries.mapNotNull { e ->
+                val k = e.key?.toString() ?: return@mapNotNull null
+                val v = e.value?.toString() ?: return@mapNotNull null
+                k to v
+            }.toMap()
+            rawHeaders is Scriptable -> {
+                val m = LinkedHashMap<String, String>()
+                for (id in rawHeaders.allIds) {
+                    if (id is String) {
+                        val v = try {
+                            rawHeaders.get(id, rawHeaders)
+                        } catch (_: Throwable) {
+                            null
+                        }
+                        if (v != null && v !== Scriptable.NOT_FOUND && v !== Undefined.instance) {
+                            m[id] = Context.toString(v)
+                        }
+                    }
+                }
+                m
+            }
+            else -> emptyMap()
+        }
         val obj = NativeWebSocket(url)
         obj.defineProperty(
             "readyState",
