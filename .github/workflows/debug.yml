@@ -22,8 +22,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       - name: Init Signature
         run: |
-          keytool -genkeypair -noprompt -keystore "$GITHUB_WORKSPACE/key.jks" -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Debug,O=Debug,C=CN"
-          printf 'KEY_PATH=../key.jks\nKEY_PASSWORD=android\nALIAS_NAME=androiddebugkey\nALIAS_PASSWORD=android\n' > local.properties
+          # 用仓库里固定的签名文件，保证每次出包签名一致（否则装不上/要卸载重装）
+          cp "$GITHUB_WORKSPACE/openclaw.jks" "$GITHUB_WORKSPACE/key.jks"
+          printf 'KEY_PATH=../key.jks\nKEY_PASSWORD=openclaw\nALIAS_NAME=openclaw\nALIAS_PASSWORD=openclaw\n' > local.properties
       - name: Build with Gradle
         run: |
           chmod +x gradlew
