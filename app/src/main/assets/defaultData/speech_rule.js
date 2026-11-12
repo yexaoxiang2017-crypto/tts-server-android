@@ -5,14 +5,24 @@
  *   splitText(text)            -> [句子]          可选，用于把每段再切句
  */
 var SpeechRuleJS = {
-    name: "旁白/对话 + 文本清洗",
+    name: "旁白/多人对话 + 文本清洗",
     id: "openclaw.multi_voice_clean",
     author: "openclaw",
-    version: 1,
+    version: 2,
     tags: { narration: "旁白", dialogue: "对话" },
+    // 给 dialogue 声明一个附加字段「角色名」，每条对话配置填一个名字，
+    // 脚本会在对话前后的旁白里找这个名字，命中就把该句子分给对应音色
+    tagsData: {
+        dialogue: {
+            role: {
+                label: "角色名",
+                hint: "填人物名（要和正文里写法一致，如 张三）"
+            }
+        }
+    },
 
     handleText: function (text, tagsData) {
-        return tagByRole(cleanText(text));
+        return tagByRole(cleanText(text), tagsData);
     },
 
     splitText: function (text) {
@@ -76,7 +86,45 @@ function trimEdge(s) {
     return s;
 }
 
-function tagByRole(text) {
+/* ---------------- 多人对话角色分配 ---------------- */
+function collectRoles(tagsData) {
+    var roles = [];
+    if (!tagsData) return roles;
+    var bucket = tagsData["dialogue"] ? tagsData["dialogue"]["role"] : null;
+    if (!bucket) return roles;
+    if (bucket instanceof Array) {
+        for (var i = 0; i < bucket.length; i++) {
+            var it = bucket[i];
+            if (!it) continue;
+            var name = String(it["value"] || "").trim();
+            var id = parseInt(it["id"], 10);
+            if (name.length > 0 && id > 0) roles.push({ id: id, name: name });
+        }
+    } else if (typeof bucket === "object") {
+        for (var k in bucket) {
+            var v = bucket[k];
+            var nm = (v && typeof v === "object") ? String(v["value"] || "") : String(v || "");
+            var cid = (v && typeof v === "object") ? parseInt(v["id"], 10) : 0;
+            if (nm && cid > 0) roles.push({ id: cid, name: nm });
+        }
+    }
+    return roles;
+}
+
+/** 在上下文里找"最靠后出现"的角色名 */
+function pickRole(context, roles) {
+    var best = null;
+    for (var i = 0; i < roles.length; i++) {
+        var pos = context.lastIndexOf(roles[i].name);
+        if (pos < 0) continue;
+        if (best === null || pos > best.pos || (pos === best.pos && roles[i].name.length > best.name.length)) {
+            best = { id: roles[i].id, pos: pos, name: roles[i].name };
+        }
+    }
+    return best;
+}
+
+function tagByRole(text, tagsData) {
     var out = [];
     var buf = "";
     var isDialogue = false;
@@ -96,6 +144,21 @@ function tagByRole(text) {
     }
     flush();
 
+    // 多人对话：按前后文最近出现的角色名分配音色
+    var roles = collectRoles(tagsData);
+    if (roles.length > 0) {
+        var lastId = 0;
+        for (var r = 0; r < out.length; r++) {
+            if (out[r].tag !== "dialogue") continue;
+            var ctxBefore = "";
+            for (var b = Math.max(0, r - 2); b < r; b++) ctxBefore += out[b].text + "。";
+            var ctxAfter = (r + 1 < out.length) ? out[r + 1].text : "";
+            var hit = pickRole(ctxBefore, roles) || pickRole(ctxAfter, roles);
+            if (hit) { out[r].id = hit.id; lastId = hit.id; }
+            else if (lastId) { out[r].id = lastId; }
+        }
+    }
+
     // 旁白过长再按句切开，避免单次请求太长
     var final = [];
     for (var j = 0; j < out.length; j++) {
@@ -104,7 +167,9 @@ function tagByRole(text) {
             var parts = splitSentences(item.text);
             for (var k = 0; k < parts.length; k++) final.push({ text: parts[k], tag: item.tag });
         } else {
-            final.push(item);
+            var copy = { text: item.text, tag: item.tag };
+            if (item.id) copy.id = item.id;
+            final.push(copy);
         }
     }
     if (final.length === 0) {
