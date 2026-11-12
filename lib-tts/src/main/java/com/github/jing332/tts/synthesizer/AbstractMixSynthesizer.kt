@@ -260,7 +260,8 @@ abstract class AbstractMixSynthesizer() : Synthesizer {
         logger.atTrace {
             message = "synthesize"
             payload = mapOf(
-                "forceConfigId" to forceConfigId,
+                // kotlin-logging 5.x 的 payload 是 Map<String, Any>（值不能为 null）
+                "forceConfigId" to (forceConfigId ?: -1L),
                 "params" to params,
             )
         }
