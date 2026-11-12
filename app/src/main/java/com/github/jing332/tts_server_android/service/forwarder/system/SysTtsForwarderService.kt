@@ -30,7 +30,7 @@ class SysTtsForwarderService(
     actionLog = ACTION_ON_LOG,
     actionStarted = ACTION_ON_STARTED,
     actionClosed = ACTION_ON_CLOSED,
-    notificationChanId = "systts_forwarder_status",
+    notificationChanId = "systts_forwarder_status_v2",
     notificationChanTitle = R.string.forwarder_systts,
     notificationIcon = R.drawable.ic_baseline_compare_arrows_24,
     notificationTitle = R.string.forwarder_systts,

@@ -73,6 +73,11 @@ abstract class AbsForwarderService(
         super.onCreate()
         isRunning = true
 
+        // 用 startForegroundService 启动时，必须在 5 秒内调用 startForeground，
+        // 否则系统会抛 ForegroundServiceDidNotStartInTimeException 直接把服务杀掉
+        // （表现为：启动后切到别的 App，回来就变“停止”）
+        runCatching { initNotification("127.0.0.1:$port") }
+
         scope.launch {
             val host = NetworkUtils.getLocalIpAddress().firstOrNull()?.hostName ?: "localhost"
             listenAddress = "$host:$port"
@@ -176,7 +181,7 @@ abstract class AbsForwarderService(
             val chan = NotificationChannel(
                 notificationChanId,
                 getString(notificationChanTitle),
-                NotificationManager.IMPORTANCE_NONE
+                NotificationManager.IMPORTANCE_LOW
             )
             chan.lightColor = Color.BLUE
             chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE

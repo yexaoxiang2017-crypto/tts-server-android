@@ -15,10 +15,9 @@ object ForwarderServiceManager {
 
     fun Context.startSysTtsForwarder() {
         val intent = Intent(this, SysTtsForwarderService::class.java)
-        // Possible crash: ForegroundServiceDidNotStartInTimeException
-        // startForegroundServiceCompat(intent)
-        startService(intent)
-
+        // 必须走 startForegroundService：普通 startService 起的服务在 App 退到后台后
+        // 会被系统当后台服务清理（现象就是“切到阅读再回来变成停止”）
+        androidx.core.content.ContextCompat.startForegroundService(this, intent)
     }
 
     fun closeSysTtsForwarder() {
