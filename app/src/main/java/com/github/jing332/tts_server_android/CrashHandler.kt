@@ -43,16 +43,27 @@ class CrashHandler(val context: Context) : Thread.UncaughtExceptionHandler {
             "$brand / $device / $modelName / $androidVersion" +
                     "\n$versionName ($versionCode)"
         }
-        if (BuildConfig.DEBUG) return
-
-        context.longToast("TTS Server已崩溃 上传日志中 稍后将会复制到剪贴板")
+        // debug 包也要留日志：崩溃信息写文件 + 复制到剪贴板，方便直接发出去排查
         val log = "\n${LocalDateTime.now()}" +
                 "\n版本代码：${AppConst.appInfo.versionCode}， 版本名称：${AppConst.appInfo.versionName}\n" +
                 "崩溃详情：\n${e.stackTraceToString()}"
+        val file = try {
+            val dir = java.io.File(context.externalCacheDir, "crash").apply { mkdirs() }
+            java.io.File(dir, "crash-${System.currentTimeMillis()}.txt").apply {
+                writeText(log)
+            }
+        } catch (_: Throwable) {
+            null
+        }
+        if (!BuildConfig.DEBUG) context.longToast("TTS Server已崩溃 上传日志中 稍后将会复制到剪贴板")
 
         runOnUI {
             ClipboardUtils.copyText("TTS-Server崩溃日志", log)
-            context.longToast("已将日志复制到剪贴板")
+            if (BuildConfig.DEBUG) {
+                context.longToast("崩溃日志已复制到剪贴板" + (file?.let { "\n文件：${it.absolutePath}" } ?: ""))
+            } else {
+                context.longToast("已将日志复制到剪贴板")
+            }
         }
     }
 }
