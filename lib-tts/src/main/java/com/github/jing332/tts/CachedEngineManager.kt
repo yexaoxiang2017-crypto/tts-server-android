@@ -14,7 +14,9 @@ object CachedEngineManager :
     private val logger = KotlinLogging.logger("CachedEngineManager")
 
     override fun onCacheRemove(key: String, value: TextToSpeechProvider<TextToSpeechSource>): Boolean {
-        logger.atDebug { message = "Engine timeout destroy: $key" }
+        // 注意：不要用 logger.atDebug{}：kotlin-logging 7 的 at* 系列会无条件走
+        // SLF4J 2.0 的 Logger.atLevel()，而 logback-android 的 Logger 没实现它 → AbstractMethodError 崩溃
+        logger.debug { "Engine timeout destroy: $key" }
         value.onDestroy()
 
         return super.onCacheRemove(key, value)
@@ -35,7 +37,7 @@ object CachedEngineManager :
     }
 
     fun expireAll() {
-        logger.atDebug { message = "Expire all cached engine" }
+        logger.debug { "Expire all cached engine" }
         cache.removeAll {
             it.onDestroy()
             true

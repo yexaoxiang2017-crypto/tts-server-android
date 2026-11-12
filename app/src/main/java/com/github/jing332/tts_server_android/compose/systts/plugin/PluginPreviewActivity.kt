@@ -86,10 +86,7 @@ class PluginPreviewActivity : ComposeActivity() {
             argSource.copy(locale = AppLocale.current(this).toCode())// eg: en-US, zh-CN)
         } else argSource).copy(plugin = plugin)
 
-        logger.atDebug {
-            message = "loading preview plugin ui"
-            payload = mapOf("source" to source, "plugin" to plugin)
-        }
+        logger.debug { "loading preview plugin ui" }
 
 
         LoggerFloatingManager.show(this, JsConsoleManager.ui)

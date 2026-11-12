@@ -257,14 +257,7 @@ abstract class AbstractMixSynthesizer() : Synthesizer {
     override suspend fun synthesize(
         params: SystemParams, forceConfigId: Long?, callback: SynthesisCallback,
     ): Result<Unit, SynthesisError> = mutex.withLock {
-        logger.atTrace {
-            message = "synthesize"
-            payload = mapOf(
-                // kotlin-logging 5.x 的 payload 是 Map<String, Any>（值不能为 null）
-                "forceConfigId" to (forceConfigId ?: -1L),
-                "params" to params,
-            )
-        }
+        logger.trace { "synthesize forceConfigId=$forceConfigId params=$params" }
 
         initError?.let {
             return@withLock Err(it)

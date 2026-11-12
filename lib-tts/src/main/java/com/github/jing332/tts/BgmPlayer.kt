@@ -95,10 +95,7 @@ class BgmPlayer(val context: SynthesizerContext) : IBgmPlayer {
     override fun setPlayList(
         list: List<BgmSource>,
     ) {
-        logger.atDebug {
-            message = "bgm setPlayList"
-            payload = mapOf("list" to list)
-        }
+        logger.debug { "bgm setPlayList: ${list.size} 首" }
 
         if (list == currentPlayList) return
         currentPlayList.clear()
