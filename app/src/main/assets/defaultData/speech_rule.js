@@ -154,8 +154,8 @@ function tagByRole(text, tagsData) {
             for (var b = Math.max(0, r - 2); b < r; b++) ctxBefore += out[b].text + "。";
             var ctxAfter = (r + 1 < out.length) ? out[r + 1].text : "";
             var hit = pickRole(ctxBefore, roles) || pickRole(ctxAfter, roles);
-            if (hit) { out[r].id = hit.id; lastId = hit.id; }
-            else if (lastId) { out[r].id = lastId; }
+            if (hit) { out[r].id = String(hit.id); lastId = hit.id; }
+            else if (lastId) { out[r].id = String(lastId); }
         }
     }
 
@@ -168,7 +168,7 @@ function tagByRole(text, tagsData) {
             for (var k = 0; k < parts.length; k++) final.push({ text: parts[k], tag: item.tag });
         } else {
             var copy = { text: item.text, tag: item.tag };
-            if (item.id) copy.id = item.id;
+            if (item.id) copy.id = String(item.id);
             final.push(copy);
         }
     }

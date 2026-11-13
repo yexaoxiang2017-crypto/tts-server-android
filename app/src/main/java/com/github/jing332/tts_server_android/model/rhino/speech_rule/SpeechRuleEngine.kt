@@ -191,7 +191,10 @@ class SpeechRuleEngine(
                             TextWithTag(
                                 it["text"].toString(),
                                 it["tag"].toString(),
-                                it.getOrDefault("id", 0).toString().toLong(),
+                                // JS 里的数字到了 Kotlin 是 Double，大数 toString() 会变成
+                                // "1.794468590022E12" 这种科学计数法，直接 toLong() 会抛
+                                // NumberFormatException 把整段朗读搞挂，这里显式处理
+                                anyToLong(it.getOrDefault("id", 0)),
                             )
                         )
                     }
@@ -208,6 +211,13 @@ class SpeechRuleEngine(
             FUNC_SPLIT_TEXT,
             text
         ) as List<CharSequence>
+    }
+
+    private fun anyToLong(v: Any?): Long = when (v) {
+        null -> 0L
+        is Number -> v.toLong()
+        is CharSequence -> v.toString().toDoubleOrNull()?.toLong() ?: 0L
+        else -> v.toString().toDoubleOrNull()?.toLong() ?: 0L
     }
 
     data class TextWithTag(val text: String, val tag: String, val id: Long)
