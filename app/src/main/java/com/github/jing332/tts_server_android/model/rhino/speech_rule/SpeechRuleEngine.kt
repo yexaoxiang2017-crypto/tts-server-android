@@ -11,6 +11,8 @@ import com.github.jing332.script.source.toScriptSource
 import com.github.jing332.tts_server_android.R
 import org.mozilla.javascript.NativeObject
 import org.mozilla.javascript.ScriptRuntime
+import org.mozilla.javascript.Scriptable
+import org.mozilla.javascript.Undefined
 
 class SpeechRuleEngine(
     val context: Context,
@@ -52,6 +54,76 @@ class SpeechRuleEngine(
         engine.execute(rule.code.toScriptSource())
     }
 
+    /** JS 对象 / Map -> Map<String, String> */
+    private fun jsStringMap(obj: Any?): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        when (obj) {
+            is Scriptable -> {
+                for (id in obj.ids) {
+                    if (id !is String) continue
+                    val v = try {
+                        obj.get(id, obj)
+                    } catch (_: Throwable) {
+                        null
+                    }
+                    if (v != null && v !== Scriptable.NOT_FOUND && v !== Undefined.instance) {
+                        out[id] = org.mozilla.javascript.Context.toString(v)
+                    }
+                }
+            }
+
+            is Map<*, *> -> obj.forEach { (k, v) ->
+                if (k != null && v != null) out[k.toString()] = v.toString()
+            }
+        }
+        return out
+    }
+
+    /** JS 对象 / Map -> TagsDataMap（tag -> key -> {label, hint, items...}） */
+    private fun jsTagsData(obj: Any?): TagsDataMap {
+        val out = LinkedHashMap<String, Map<String, Map<String, String>>>()
+        when (obj) {
+            is Scriptable -> {
+                for (id in obj.ids) {
+                    if (id !is String) continue
+                    val v = try {
+                        obj.get(id, obj)
+                    } catch (_: Throwable) {
+                        null
+                    }
+                    if (v is Scriptable || v is Map<*, *>) out[id] = jsNestedMap(v)
+                }
+            }
+
+            is Map<*, *> -> obj.forEach { (k, v) ->
+                if (k != null) out[k.toString()] = jsNestedMap(v)
+            }
+        }
+        return out
+    }
+
+    private fun jsNestedMap(obj: Any?): Map<String, Map<String, String>> {
+        val out = LinkedHashMap<String, Map<String, String>>()
+        when (obj) {
+            is Scriptable -> {
+                for (id in obj.ids) {
+                    if (id !is String) continue
+                    val v = try {
+                        obj.get(id, obj)
+                    } catch (_: Throwable) {
+                        null
+                    }
+                    if (v is Scriptable || v is Map<*, *>) out[id] = jsStringMap(v)
+                }
+            }
+
+            is Map<*, *> -> obj.forEach { (k, v) ->
+                if (k != null) out[k.toString()] = jsStringMap(v)
+            }
+        }
+        return out
+    }
+
     @Suppress("UNCHECKED_CAST")
     fun evalInfo() {
         eval()
@@ -60,13 +132,11 @@ class SpeechRuleEngine(
             rule.ruleId = get("id").toString()
             rule.author = get("author").toString()
 
-            rule.tags = get("tags") as Map<String, String>
-
-            rule.tagsData =
-                getOrDefault(
-                    "tagsData",
-                    emptyMap<String, Map<String, Map<String, String>>>()
-                ) as TagsDataMap
+            // Rhino 的 JS 对象字面量不是 java.util.Map：直接 as 强转要么抛异常，
+            // 要么把 Scriptable 原样留在里面，表现为规则里声明的 tags/tagsData 读不出来
+            // （用户在配置界面上就看不到「角色名」这类附加输入框）。
+            rule.tags = jsStringMap(get("tags"))
+            rule.tagsData = jsTagsData(getOrDefault("tagsData", Undefined.instance))
 
             runCatching {
                 rule.version = ScriptRuntime.toNumber(get("version")).toInt()
