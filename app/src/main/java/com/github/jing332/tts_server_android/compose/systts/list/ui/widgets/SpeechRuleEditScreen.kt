@@ -389,6 +389,24 @@ private fun CustomTagScreen(
     }
 
     Column(Modifier.padding(vertical = 4.dp)) {
+        // 兜底：规则没有声明 tagsData 时（例如用了旧规则），
+        // 「对话」标签下也要能填角色名，否则用户根本配不出第二个角色
+        if (info.tag == "dialogue" && speechRule.tagsData[info.tag].isNullOrEmpty()) {
+            val roleValue by rememberUpdatedState(newValue = info.tagData["role"] ?: "")
+            OutlinedTextField(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                label = { Text("角色名") },
+                placeholder = { Text("填人物名，与正文写法一致，如：三娘子") },
+                value = roleValue,
+                onValueChange = {
+                    onInfoChange(
+                        info.copy(tagData = info.tagData.toMutableMap().apply { this["role"] = it })
+                    )
+                }
+            )
+        }
         speechRule.tagsData[info.tag]?.forEach { defTag ->
             val key = defTag.key
             val label = defTag.value["label"] ?: ""
